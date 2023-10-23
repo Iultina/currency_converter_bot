@@ -1,23 +1,35 @@
-import logging
-import requests
 import datetime
+import logging
 import os
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+import requests
 from dotenv import load_dotenv
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import (BadRequest, NetworkError,
+                            TelegramError, TimedOut)
+from telegram.ext import (CallbackContext, CallbackQueryHandler,
+                          CommandHandler, Updater)
 
+from database.models import History, User
 from database.session import DatabaseSession
-from database.models import User, History
 
 load_dotenv()
 
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
 TOKEN = os.getenv('TOKEN')
-API_URL = os.getenv('API_URL')
- 
-logging.basicConfig(level=logging.INFO)
+API_URL = 'https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/rub.json' 
  
 def start(update: Update, context: CallbackContext) -> None:
+    """
+    Обработчик команды /start для запуска бота.
+
+    :param update: Объект Update, содержащий информацию о сообщении от пользователя.
+    :param context: Объект CallbackContext для работы с контекстом бота.
+    """
     logging.info('Кто-то запускает бота')
     chat_id = update.message.chat_id
 
@@ -30,12 +42,23 @@ def start(update: Update, context: CallbackContext) -> None:
 
     send_keyboard(chat_id, 'Выберите действие:', context)
 
-def get_rate(): 
+def get_rate() -> float:
+    """
+    Получает текущий курс доллара из внешнего источника.
+
+    :return: Текущий курс доллара в RUB (рублях).
+    """ 
     response = requests.get(API_URL)  
     rate = response.json()['rub'] 
     return rate 
- 
+
 def button(update: Update, context: CallbackContext) -> None:
+    """
+    Обработчик нажатий на кнопки в чате.
+
+    :param update: Объект Update, содержащий информацию о событии нажатия кнопки.
+    :param context: Объект CallbackContext для работы с контекстом бота.
+    """
     query = update.callback_query
     chat_id = query.message.chat_id
     query.answer()
@@ -80,7 +103,15 @@ def button(update: Update, context: CallbackContext) -> None:
             session.commit()
             send_keyboard(chat_id, 'Вы отписались от обновлений.', context)
 
-def send_keyboard(chat_id, message_text, context):  
+def send_keyboard(chat_id: int, message_text: str, context: CallbackContext, page: int = 0) -> None:
+    """
+    Отправляет клавиатуру с кнопками в чат.
+
+    :param chat_id: Идентификатор чата, куда отправляется клавиатура.
+    :param message_text: Текст сообщения, сопровождающего клавиатуру.
+    :param context: Объект CallbackContext для работы с контекстом бота.
+    :param page: Номер страницы истории (по умолчанию 0).
+    """ 
     with DatabaseSession() as session:
         user = session.query(User).filter_by(chat_id=chat_id).first()  
         if user.subscribed:  
@@ -98,8 +129,13 @@ def send_keyboard(chat_id, message_text, context):
   
         reply_markup = InlineKeyboardMarkup(keyboard)  
         context.bot.send_message(chat_id=chat_id, text=message_text, reply_markup=reply_markup)  
-  
-def send_daily_update(context: CallbackContext):  
+
+def send_daily_update(context: CallbackContext) -> None:
+    """
+    Отправляет ежедневное обновление курса доллара подписанным пользователям.
+
+    :param context: Объект CallbackContext для работы с контекстом бота.
+    """
     with DatabaseSession() as session:
         users = session.query(User).filter_by(subscribed=True).all()  
         rate = get_rate()  
@@ -108,11 +144,14 @@ def send_daily_update(context: CallbackContext):
             chat_id = user.chat_id  
             context.bot.send_message(chat_id, f'Ежедневное обновление: текущий курс доллара - {rate} RUB')
  
-def main(): 
-    updater = Updater(TOKEN) 
-    dp = updater.dispatcher 
-    updater.job_queue.run_daily(send_daily_update, time=datetime.time(hour=6)) 
-    dp.add_handler(CommandHandler('start', start)) 
-    dp.add_handler(CallbackQueryHandler(button)) 
-    updater.start_polling() 
+def main():      
+    updater = Updater(TOKEN)  
+    dp = updater.dispatcher      
+    updater.job_queue.run_daily(send_daily_update, time=datetime.time(hour=6))  
+    dp.add_handler(CommandHandler('start', start))      
+    dp.add_handler(CallbackQueryHandler(button))  
+    try:   
+        updater.start_polling()   
+    except (TelegramError, NetworkError, TimedOut, BadRequest) as e: 
+        logging.error('Произошла ошибка при работе с Telegram API:', e)
     updater.idle()
