@@ -16,7 +16,7 @@ logging.basicConfig(
 
 class Config:
     DATABASE_URI = os.getenv('DATABASE_URI', 'postgresql://username:password@localhost:5432/postgres')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 engine = create_engine(Config.DATABASE_URI)
 # engine = create_engine('sqlite:///users.db') 
