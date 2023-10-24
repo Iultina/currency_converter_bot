@@ -103,14 +103,13 @@ def button(update: Update, context: CallbackContext) -> None:
             session.commit()
             send_keyboard(chat_id, 'Вы отписались от обновлений.', context)
 
-def send_keyboard(chat_id: int, message_text: str, context: CallbackContext, page: int = 0) -> None:
+def send_keyboard(chat_id: int, message_text: str, context: CallbackContext) -> None:
     """
     Отправляет клавиатуру с кнопками в чат.
 
     :param chat_id: Идентификатор чата, куда отправляется клавиатура.
     :param message_text: Текст сообщения, сопровождающего клавиатуру.
     :param context: Объект CallbackContext для работы с контекстом бота.
-    :param page: Номер страницы истории (по умолчанию 0).
     """ 
     with DatabaseSession() as session:
         user = session.query(User).filter_by(chat_id=chat_id).first()  
