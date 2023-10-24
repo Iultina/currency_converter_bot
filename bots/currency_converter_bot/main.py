@@ -118,7 +118,7 @@ class TelegramBot:
 
                 message = '' 
                 for rate in rates: 
-                    message += f'{rate.date.strftime('%Y-%m-%d %H:%M:%S')} - {rate.rate} RUB\n'
+                    message += f"{rate.date.strftime('%Y-%m-%d %H:%M:%S')} - {rate.rate} RUB\n" 
                     
                 total_rates = session.query(History).filter_by(user_id=user.id).count() 
                 paginator = InlineKeyboardPaginator( 
