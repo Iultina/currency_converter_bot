@@ -107,7 +107,7 @@ class TelegramBot:
                 logging.info('Пользователь запрашивает историю') 
                 user = session.query(User).filter_by(chat_id=chat_id).first() 
 
-                page = int(query.data.split("_")[1]) if "_" in query.data else 1 
+                page = int(query.data.split('_')[1]) if '_' in query.data else 1 
                 items_per_page = 5
                 offset = (page - 1) * items_per_page 
                 rates = session.query(History).filter_by(user_id=user.id).order_by(History.date.desc()).offset(offset).limit(items_per_page).all() 
@@ -118,7 +118,7 @@ class TelegramBot:
 
                 message = '' 
                 for rate in rates: 
-                    message += f"{rate.date.strftime('%Y-%m-%d %H:%M:%S')} - {rate.rate} RUB\n" 
+                    message += f'{rate.date.strftime('%Y-%m-%d %H:%M:%S')} - {rate.rate} RUB\n'
                     
                 total_rates = session.query(History).filter_by(user_id=user.id).count() 
                 paginator = InlineKeyboardPaginator( 
