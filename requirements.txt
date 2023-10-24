@@ -14,6 +14,7 @@ load-dotenv==0.1.0
 psycopg2-binary==2.9.9
 python-dotenv==1.0.0
 python-telegram-bot==13.13
+python-telegram-bot-pagination==0.0.3
 pytz==2023.3.post1
 requests==2.31.0
 six==1.16.0
