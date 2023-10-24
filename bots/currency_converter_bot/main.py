@@ -9,6 +9,7 @@ from telegram.error import (BadRequest, NetworkError,
                             TelegramError, TimedOut)
 from telegram.ext import (CallbackContext, CallbackQueryHandler,
                           CommandHandler, Updater)
+from telegram_bot_pagination import InlineKeyboardPaginator
 
 from database.models import History, User
 from database.session import DatabaseSession
@@ -77,17 +78,34 @@ def button(update: Update, context: CallbackContext) -> None:
             session.commit()
             send_keyboard(chat_id, f'Текущий курс доллара: {rate} RUB', context)
 
-        elif query.data == 'history':
-            logging.info('Пользователь запрашивает историю')
-            user = session.query(User).filter_by(chat_id=chat_id).first()
-            if not user:
-                send_keyboard(chat_id, 'История пуста.', context)
-                return
-            rates = session.query(History).filter_by(user_id=user.id).order_by(History.date.desc()).limit(10).all()
-            message = ''
-            for rate in rates:
-                message += f"{rate.date.strftime('%Y-%m-%d %H:%M:%S')} - {rate.rate} RUB\n"
-            send_keyboard(chat_id, message, context)
+        elif query.data.startswith('history'): 
+            logging.info('Пользователь запрашивает историю') 
+            user = session.query(User).filter_by(chat_id=chat_id).first() 
+
+            page = int(query.data.split("_")[1]) if "_" in query.data else 1 
+            items_per_page = 5
+            offset = (page - 1) * items_per_page 
+            rates = session.query(History).filter_by(user_id=user.id).order_by(History.date.desc()).offset(offset).limit(items_per_page).all() 
+                
+            if not user or not rates: 
+                context.bot.send_message(chat_id=chat_id, text='История пуста.') 
+                return 
+
+            message = '' 
+            for rate in rates: 
+                message += f"{rate.date.strftime('%Y-%m-%d %H:%M:%S')} - {rate.rate} RUB\n" 
+                
+            total_rates = session.query(History).filter_by(user_id=user.id).count() 
+            paginator = InlineKeyboardPaginator( 
+                total_rates,  
+                current_page=page, 
+                data_pattern='history_{page}' 
+            ) 
+            paginator.add_after(InlineKeyboardButton('Назад', callback_data='back_to_main'))   
+            context.bot.send_message(chat_id=chat_id, text=message, reply_markup=paginator.markup) 
+
+        elif query.data == 'back_to_main': 
+            send_keyboard(chat_id, 'Выберите действие:', context)
 
         elif query.data == 'subscribe':
             logging.info('Пользователь подписывается на обновления')
@@ -122,7 +140,7 @@ def send_keyboard(chat_id: int, message_text: str, context: CallbackContext) -> 
   
         keyboard = [  
             [InlineKeyboardButton('Текущий курс', callback_data='current_rate'),  
-             InlineKeyboardButton('История (последние 10 запросов)', callback_data='history')],  
+             InlineKeyboardButton('История', callback_data='history')],  
             [InlineKeyboardButton(button_text, callback_data=keyboard_action)]  
         ]  
   
