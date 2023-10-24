@@ -24,7 +24,7 @@ logging.basicConfig(
 TOKEN = os.getenv('TOKEN')
 API_URL = 'https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/rub.json' 
  
-def start(update: Update, context: CallbackContext) -> None:
+def _start(update: Update, context: CallbackContext) -> None:
     """
     Обработчик команды /start для запуска бота.
 
@@ -41,7 +41,7 @@ def start(update: Update, context: CallbackContext) -> None:
             session.add(user)
             session.commit()
 
-    send_keyboard(chat_id, 'Выберите действие:', context)
+    _send_keyboard(chat_id, 'Выберите действие:', context)
 
 def get_rate() -> float:
     """
@@ -53,7 +53,7 @@ def get_rate() -> float:
     rate = response.json()['rub'] 
     return rate 
 
-def button(update: Update, context: CallbackContext) -> None:
+def _button(update: Update, context: CallbackContext) -> None:
     """
     Обработчик нажатий на кнопки в чате.
 
@@ -76,7 +76,7 @@ def button(update: Update, context: CallbackContext) -> None:
             history = History(user_id=user.id, rate=rate)
             session.add(history)
             session.commit()
-            send_keyboard(chat_id, f'Текущий курс доллара: {rate} RUB', context)
+            _send_keyboard(chat_id, f'Текущий курс доллара: {rate} RUB', context)
 
         elif query.data.startswith('history'): 
             logging.info('Пользователь запрашивает историю') 
@@ -105,23 +105,23 @@ def button(update: Update, context: CallbackContext) -> None:
             context.bot.send_message(chat_id=chat_id, text=message, reply_markup=paginator.markup) 
 
         elif query.data == 'back_to_main': 
-            send_keyboard(chat_id, 'Выберите действие:', context)
+            _send_keyboard(chat_id, 'Выберите действие:', context)
 
         elif query.data == 'subscribe':
             logging.info('Пользователь подписывается на обновления')
             user = session.query(User).filter_by(chat_id=chat_id).first()
             user.subscribed = True
             session.commit()
-            send_keyboard(chat_id, 'Вы успешно подписались на обновления', context)
+            _send_keyboard(chat_id, 'Вы успешно подписались на обновления', context)
 
         elif query.data == 'unsubscribe':
             logging.info('Пользователь отписывается от обновлений')
             user = session.query(User).filter_by(chat_id=chat_id).first()
             user.subscribed = False
             session.commit()
-            send_keyboard(chat_id, 'Вы отписались от обновлений.', context)
+            _send_keyboard(chat_id, 'Вы отписались от обновлений.', context)
 
-def send_keyboard(chat_id: int, message_text: str, context: CallbackContext) -> None:
+def _send_keyboard(chat_id: int, message_text: str, context: CallbackContext) -> None:
     """
     Отправляет клавиатуру с кнопками в чат.
 
@@ -147,7 +147,7 @@ def send_keyboard(chat_id: int, message_text: str, context: CallbackContext) -> 
         reply_markup = InlineKeyboardMarkup(keyboard)  
         context.bot.send_message(chat_id=chat_id, text=message_text, reply_markup=reply_markup)  
 
-def send_daily_update(context: CallbackContext) -> None:
+def _send_daily_update(context: CallbackContext) -> None:
     """
     Отправляет ежедневное обновление курса доллара подписанным пользователям.
 
@@ -164,9 +164,9 @@ def send_daily_update(context: CallbackContext) -> None:
 def main():      
     updater = Updater(TOKEN)  
     dp = updater.dispatcher      
-    updater.job_queue.run_daily(send_daily_update, time=datetime.time(hour=6))  
-    dp.add_handler(CommandHandler('start', start))      
-    dp.add_handler(CallbackQueryHandler(button))  
+    updater.job_queue.run_daily(_send_daily_update, time=datetime.time(hour=6))  
+    dp.add_handler(CommandHandler('start', _start))      
+    dp.add_handler(CallbackQueryHandler(_button))  
     try:   
         updater.start_polling()   
     except (TelegramError, NetworkError, TimedOut, BadRequest) as e: 
